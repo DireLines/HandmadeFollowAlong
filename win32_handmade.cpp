@@ -15,7 +15,7 @@ typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
-
+typedef int32 bool32;
 struct win32_offscreen_buffer
 {
 	BITMAPINFO Info;
@@ -41,11 +41,11 @@ typedef X_INPUT_GET_STATE(x_input_get_state);
 typedef X_INPUT_SET_STATE(x_input_set_state);
 X_INPUT_GET_STATE(XInputGetStateStub)
 { 
-	return (0);
+	return (ERROR_DEVICE_NOT_CONNECTED);
 }
 X_INPUT_SET_STATE(XInputSetStateStub)
 {
-	return (0);
+	return (ERROR_DEVICE_NOT_CONNECTED);
 }
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
@@ -55,7 +55,11 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 internal void
 Win32LoadXInput(void)
 {
-	HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+	if(!XInputLibrary)
+	{
+		HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+	}
 	if (XInputLibrary)
 	{
 		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
@@ -200,6 +204,12 @@ Win32MainWindowCallback(
 				{
 				}
 			}
+
+			bool32 AltKeyWasDown = (LParam & (1 << 29));
+			if(VKCode == VK_F4 && AltKeyWasDown)
+			{
+				Running = false;
+			}
 		}break;
 
 		case WM_ACTIVATEAPP:
@@ -316,6 +326,9 @@ WinMain(HINSTANCE Instance,
 						{
 							YOffset += 2;
 						}
+
+						XOffset += StickX >> 12;
+						YOffset += StickY >> 12;
 					}
 					else
 					{
@@ -328,7 +341,6 @@ WinMain(HINSTANCE Instance,
 				XInputSetState(0, &Vibration);
 
 				RenderWeirdGradient(&GlobalBackbuffer, XOffset, YOffset);
-				++XOffset;
 
 
 				
