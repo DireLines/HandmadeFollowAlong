@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <dsound.h>
 
 #define local_persist static
 #define global_variable static
@@ -26,8 +27,11 @@ struct win32_offscreen_buffer
 	int Pitch;
 };
 
+//if Running is true, entire game is running.
 global_variable bool Running;
+//holds the pixels in memory
 global_variable win32_offscreen_buffer GlobalBackbuffer;
+
 
 struct win32_window_dimension
 {
@@ -52,6 +56,9 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define XInputGetState XInputGetState_
 #define XInputSetState XInputSetState_
 
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+//loads XInput library and imports functions XInputGetState and XInputSetState
 internal void
 Win32LoadXInput(void)
 {
@@ -66,6 +73,84 @@ Win32LoadXInput(void)
 		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
 	}
 }
+
+//loads Direct Sound
+internal void
+Win32InitDSound(HWND Window, int32 SamplesPerSecond, int32 BufferSize)
+{
+	//load library
+	HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
+
+	if(DSoundLibrary)
+	{
+		//get DirectSound Object
+		direct_sound_create *DirectSoundCreate = (direct_sound_create *)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+		LPDIRECTSOUND DirectSound;
+
+		if(DirectSoundCreate && SUCCEEDED(DirectSoundCreate(0,DirectSound,0)))
+		{
+			//create primary dummy buffer to set mode of dsound
+			if(SUCCEEDED(DirectSound->SetCooperativeLevel(Window,DSSCL_PRIORITY)))
+			{
+				DSBUFFERDESC BufferDescription = {};
+				BufferDescription.dwSize = sizeof(BufferDescription);
+				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+
+				LPDIRECTSOUNDBUFFER PrimaryBuffer;
+				if(SUCCEEDED(CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)))
+				{
+					WAVEFORMATEX WaveFormat = {};
+					WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+					WaveFormat.nChannels = 2;
+					WaveFormat.wBitsPerSample = 16;
+					WaveFormat.nSamplesPerSecond = SamplesPerSecond;
+					WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample) / 8;
+					WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSecond*WaveFormat.nBlockAlign;
+					WaveFormat.cbSize = 0;
+					if(SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat)))
+					{
+						OutputDebugStringA("Primary Sound Buffer Set");
+					}
+					else
+					{
+
+					}
+				}
+				else
+				{
+
+				}
+			}
+			else{
+
+			}
+			//create actual secondary buffer which is what we will put sound into
+			DSBUFFERDESC BufferDescription = {};
+			BufferDescription.dwSize = sizeof(BufferDescription);
+			BufferDescription.dwFlags = 0;
+			BufferDescription.dwBufferBytes = BufferSize;
+			BufferDescription.lpwfxFormat = &WaveFormat;
+
+			LPDIRECTSOUNDBUFFER SecondaryBuffer;
+			if(SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)))
+			{
+				//play sound
+				OutputDebugStringA("Secondary Sound Buffer Created Successfully");
+			}
+			else{
+
+			}
+		}
+		else{
+
+		}
+	}
+	else{
+
+	}
+}
+
+//returns width/height object of a window
 internal win32_window_dimension Win32GetWindowDimension(HWND Window)
 {
 	win32_window_dimension Result;
@@ -77,6 +162,8 @@ internal win32_window_dimension Win32GetWindowDimension(HWND Window)
 
 	return Result;
 }
+
+//fills in pixels of a buffer in a specific way
 internal void
 RenderWeirdGradient(win32_offscreen_buffer *Buffer, int XOffset, int YOffset)
 {
@@ -94,6 +181,8 @@ RenderWeirdGradient(win32_offscreen_buffer *Buffer, int XOffset, int YOffset)
 		Row += Buffer->Pitch;
 	}
 }
+
+//initializes buffer fields
 internal void
 Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
 {
@@ -118,7 +207,7 @@ Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
 	Buffer->Pitch = Width*Buffer->BytesPerPixel;
 }
 
-
+//takes a buffer and puts it in a window
 internal void
 Win32DisplayBufferInWindow(HDC DeviceContext, int WindowWidth,int WindowHeight,
 							win32_offscreen_buffer *Buffer)
@@ -133,6 +222,7 @@ Win32DisplayBufferInWindow(HDC DeviceContext, int WindowWidth,int WindowHeight,
 		SRCCOPY);
 }
 
+//interprets interaction with a window
 LRESULT CALLBACK
 Win32MainWindowCallback(
 	HWND Window,
@@ -240,6 +330,7 @@ Win32MainWindowCallback(
 	return Result;
 }
 
+//PROGRAM ACTUALLY STARTS RUNNING HERE
 int CALLBACK
 WinMain(HINSTANCE Instance,
 	HINSTANCE PrevInstance,
@@ -285,6 +376,7 @@ WinMain(HINSTANCE Instance,
 			Running = true;
 			int XOffset = 0;
 			int YOffset = 0;
+			Win32InitDSound(Window, 48000, 48000*sizeof(int16)*2);
 			while(Running)
 			{
 				MSG Message;
