@@ -1,15 +1,21 @@
 # HandmadeFollowAlong
 Following along with Handmade Hero for long enough to render sprites on screen
 
-Note: to get the code working...
+To get the code working...
 
 Make this directory hierarchy:
+
 handmade
-   misc
-      shell.bat
-   code
-      build.bat
-      win32_handmade.cpp
+
+----misc
+
+--------shell.bat
+
+----code
+
+--------build.bat
+
+--------win32_handmade.cpp
 
 subst W: C:[path to handmade directory]
 edit shell.bat so that it contains your path to vcvarsall.bat
