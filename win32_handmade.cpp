@@ -474,6 +474,8 @@ WinMain(HINSTANCE Instance,
 
 			Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
 			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.SecondaryBufferSize);
+			GlobalSecondaryBuffer->Play(0,0,DSBPLAY_LOOPING);
+			
 			Running = true;
 			LARGE_INTEGER LastCounter;
 			QueryPerformanceCounter(&LastCounter);
