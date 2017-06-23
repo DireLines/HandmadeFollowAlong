@@ -409,6 +409,7 @@ While Running is true:
 	Render pixels into pixel buffer (right now it's just the test pattern from RenderWeirdGradient)
 	Write stuff into sound ring buffer if necessary
 	Actually put the pixel buffer pixels into the window
+	Print out beginning and ending times of the loop
 
 */
 int CALLBACK
@@ -418,6 +419,10 @@ WinMain(HINSTANCE Instance,
 	int       ShowCode)
 {
 	Win32LoadXInput();
+
+	LARGE_INTEGER PerformanceFrequencyResult;
+	QueryPerformanceFrequency(&PerformanceFrequencyResult);
+	int64 PerformanceFrequency = PerformanceFrequencyResult.QuadPart;
 
 	WNDCLASSA WindowClass = {};
 
@@ -470,8 +475,12 @@ WinMain(HINSTANCE Instance,
 			Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
 			Win32FillSoundBuffer(&SoundOutput,0,SoundOutput.SecondaryBufferSize);
 			Running = true;
+			LARGE_INTEGER LastCounter;
+			QueryPerformanceCounter(&LastCounter);
 			while(Running)
 			{
+				// LARGE_INTEGER BeginCounter;
+				// QueryPerformanceCounter(&BeginCounter);
 				MSG Message;
 				while (PeekMessageA(&Message, 0, 0, 0, PM_REMOVE))
 				{
@@ -552,6 +561,18 @@ WinMain(HINSTANCE Instance,
 
 				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 				Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, &GlobalBackbuffer);
+
+				LARGE_INTEGER EndCounter;
+				QueryPerformanceCounter(&EndCounter);
+
+				int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
+				int32 MillisecondsElapsed = (int32)((1000*CounterElapsed) / PerformanceFrequency));
+
+				char Buffer[256];
+				wsprintf(Buffer, "Milliseconds per frame: %d \n",MillisecondsElapsed);
+				OutputDebugStringA(Buffer);
+
+				LastCounter = EndCounter;
 			}
 		}
 		else
