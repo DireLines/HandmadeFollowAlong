@@ -475,10 +475,13 @@ WinMain(HINSTANCE Instance,
 			Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
 			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.SecondaryBufferSize);
 			GlobalSecondaryBuffer->Play(0,0,DSBPLAY_LOOPING);
-			
+
 			Running = true;
+
 			LARGE_INTEGER LastCounter;
 			QueryPerformanceCounter(&LastCounter);
+			int64 LastCycleCount = __rdtsc();
+
 			while (Running)
 			{
 				// LARGE_INTEGER BeginCounter;
@@ -565,15 +568,17 @@ WinMain(HINSTANCE Instance,
 
 				LARGE_INTEGER EndCounter;
 				QueryPerformanceCounter(&EndCounter);
-
+				int64 EndCycleCount = __rdtsc();
+				
+				int32 CyclesElapsed = (int32)(EndCycleCount - LastCycleCount);
 				int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
 				int32 MillisecondsElapsed = (int32)((1000 * CounterElapsed) / PerformanceFrequency);
-
 				char Buffer[256];
-				wsprintf(Buffer, "Milliseconds per frame: %d \n", MillisecondsElapsed);
+				wsprintf(Buffer, "Milliseconds this frame: %d \nDiff in cycle count: %d", MillisecondsElapsed, CyclesElapsed);
 				OutputDebugStringA(Buffer);
 
 				LastCounter = EndCounter;
+				LastCycleCount = EndCycleCount;
 			}
 		}
 		else
