@@ -31,6 +31,6 @@ run build.bat to generate build directory with exe
 
 from code directory, run this command:
 
-devenv ..\..\build\win32_handmade.exe
+devenv ..\ .. \build\win32_handmade.exe
 
 click run
